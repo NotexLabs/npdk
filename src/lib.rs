@@ -1,2 +1,2 @@
 pub mod packer;
-mod unpacker;
+pub mod unpacker;
