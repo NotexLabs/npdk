@@ -79,7 +79,7 @@ impl Packer {
 
                 loop {
                     if let Ok(_) = rx.try_recv() {
-                        pb.finish_with_message("Packed plugin completed".bright_green().bold().to_string());
+                        pb.finish_with_message("Packing plugin completed".bright_green().bold().to_string());
                         break;
                     }
                     pb.inc(1);
