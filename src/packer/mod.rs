@@ -38,7 +38,7 @@ impl Packer {
                 if file_name == "plugin.conf.toml" {
                     config = Some(toml::from_str::<Config>(&content)?);
                 }
-                println!("{:?} {:?}", &(file_name.len() as u32), &(content.len() as u32));
+                
                 packed_content = vec![
                     &packed_content[..],
                     &(file_name.len() as u32).to_be_bytes()[..],
