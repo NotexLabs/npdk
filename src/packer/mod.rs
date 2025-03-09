@@ -1,4 +1,4 @@
-mod config_parser;
+pub mod config_parser;
 
 use std::io::{BufWriter, Write};
 use std::path::Path;
