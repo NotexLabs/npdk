@@ -6,13 +6,20 @@ edition = "2024"
 [dependencies]
 clap = {version = "4.5.30", features = ["color", "derive"]}
 brotli = "7.0.0"
-tokio = {version = "1.43.0", features = ["default", "rt", "rt-multi-thread", "macros", "fs", "sync"] }
+tokio = {version = "1.43.0", features = ["default", "rt", "rt-multi-thread", "macros", "fs", "sync", "time"] }
 indicatif = {version = "0.17.11", features = ["tokio"]}
 walkdir = "2.5.0"
 anyhow = "1.0.96"
 colored = "3.0.0"
 serde = {version = "1.0.218", features = ["derive"]}
 toml = "0.8.20"
+dialoguer = "0.11.0"
+notify = {version = "8.0.0", features = ["default"]}
+include_dir = "0.7.4"
+tera = "1.20.0"
+convert_case = "0.7.1"
+async-watcher = "0.3.0"
+notify-debouncer-full = "0.5.0"
 
 [profile.dev]
 incremental = true

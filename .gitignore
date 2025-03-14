@@ -1,5 +1,4 @@
-/target
+test_dir
+target
 .idea
 Cargo.lock
-test_dir
-myPlugin.notex.plugin

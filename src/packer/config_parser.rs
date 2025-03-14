@@ -9,5 +9,5 @@ pub struct Config {
 pub struct Package {
     pub name: String,
     pub version: String,
-    pub exposed: Vec<String>,
+    pub exposes: Vec<String>,
 }
