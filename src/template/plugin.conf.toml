@@ -2,3 +2,6 @@
 name = "{{pluginNamePascalCase}}"
 version = "0.0.0"
 exposes = ["./{{pluginNamePascalCase}}"]
+
+[profile]
+build = "{{buildCommand}}"

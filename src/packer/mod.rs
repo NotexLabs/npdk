@@ -10,6 +10,7 @@ use tokio::fs::File;
 use tokio::io::{AsyncReadExt};
 use tokio::join;
 use walkdir::WalkDir;
+use crate::debug_println;
 use crate::packer::config_parser::Config;
 
 pub struct Packer {
@@ -25,12 +26,16 @@ impl Packer {
     }
 
     pub async fn pack(self) -> Result<()> {
+        debug_println!("Packing///");
         let mut config = None;
 
         let mut packed_content = vec![];
 
-        for entry in self.walk_dir.into_iter().filter_map(|e| e.ok()) {
+        for entry in self.walk_dir {
+            debug_println!("{:?}", entry);
+            let entry = entry?;
             let path = entry.into_path();
+            if path.to_str().unwrap().contains("@mf-types") { continue }
             if path.is_file() {
                 let mut content = String::new();
                 File::open(&path).await?.read_to_string(&mut content).await?;
@@ -48,6 +53,8 @@ impl Packer {
                 ].concat::<u8>();
             }
         }
+
+        debug_println!("Start packing");
 
         if let Some(config) = config {
 

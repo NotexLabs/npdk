@@ -1,24 +1,19 @@
-use std::fs::create_dir;
+use std::env;
+use std::fs::{create_dir, read_to_string};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::thread;
 use std::time::{Duration};
 use clap::{Parser, Subcommand};
 use anyhow::Result;
-use async_watcher::AsyncDebouncer;
-use async_watcher::notify::RecursiveMode;
+use colored::Colorize;
 use convert_case::{Case, Casing};
 use dialoguer::theme::ColorfulTheme;
 use include_dir::{include_dir, Dir};
-use notify::{recommended_watcher, Event, EventKind, Watcher};
-use notify::event::{CreateKind, ModifyKind};
-use tera::{Context, Tera};
+use tera::{Context as Ctx, Tera};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-use tokio::{join, task, time};
-use tokio::sync::mpsc;
-use tokio::time::Instant;
-use walkdir::WalkDir;
+use npdk::debug_println;
+use npdk::packer::config_parser::Config;
 use npdk::packer::Packer;
 
 #[derive(Debug, Parser)]
@@ -33,12 +28,7 @@ impl Cli {
     pub(crate) async fn run(self) -> Result<()> {
         match self.command {
             CliCommand::Pack { source } => {
-                if let Some(source) = source {
-                    Packer::new(PathBuf::from(source))?.pack().await?;
-                } else {
-                    Packer::new(std::env::current_dir().unwrap().join("dist"))?.pack().await?
-                }
-
+                pack_plugin(source).await?;
             }
             CliCommand::Init => {
                 let dir = dialoguer::Input::with_theme(&ColorfulTheme::default())
@@ -49,6 +39,11 @@ impl Cli {
                 let input = dialoguer::Input::with_theme(&ColorfulTheme::default())
                     .with_prompt("Enter plugin name")
                     .default("plugin".to_string())
+                    .interact_text()?;
+
+                let build_command = dialoguer::Input::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Enter build command")
+                    .default("npm run build".to_string())
                     .interact_text()?;
 
                 let mut tera = Tera::default();
@@ -68,10 +63,11 @@ impl Cli {
                     "src/index.tsx",
                     TEMPLATE.get_file("src/index.tsx").unwrap().contents_utf8().unwrap()
                 )?;
-                let mut context = Context::new();
+                let mut context = Ctx::new();
 
                 context.insert("pluginName", &input);
                 context.insert("pluginNamePascalCase", &input.to_case(Case::Pascal));
+                context.insert("buildCommand", &build_command);
 
                 let config_ts = tera.render("rsbuild.config.ts", &context)?;
                 let config_toml = tera.render("plugin.conf.toml", &context)?;
@@ -91,57 +87,72 @@ impl Cli {
     }
 }
 
-async fn perform_rebuild(source: Option<String>) -> Result<()> {
-    let build_success = task::spawn_blocking(|| {
-        Ok::<bool, anyhow::Error> (
-            Command::new("bun")
-                .args(["run", "build"])
-                .spawn()?
-                .wait_with_output()?
-                .status
-                .success()
-        )
-    })
-        .await??;
-    if build_success {
-        if let Some(source) = source {
-            Packer::new(PathBuf::from(source))?.pack().await?;
-        } else {
-            Packer::new(std::env::current_dir().unwrap().join("dist"))?.pack().await?
-        }
+async fn pack_plugin(source: Option<String>) -> Result<()> {
+    debug_println!("Packing plugin");
+    if let Some(source) = source {
+        Packer::new(PathBuf::from(source))?.pack().await?;
     } else {
-        println!("Rebuild failed");
+        Packer::new(env::current_dir().unwrap().join("dist"))?.pack().await?;
     }
     Ok(())
 }
 
+async fn perform_rebuild(source: Option<String>, build_command: String) -> Result<()> {
+    println!("{}", "Rebuilding...".bright_green().bold());
+    let build_command_parts: Vec<String> = build_command.split(' ').map(|x| x.to_string()).collect();
 
-async fn setup_watcher(source: Option<String>) -> anyhow::Result<()> {
+    if build_command_parts.is_empty() {
+        return Err(anyhow::anyhow!("Build command is empty"));
+    }
+
+    let current_dir = env::current_dir()?;
+
+    let output = Command::new("cmd")
+        .current_dir(current_dir)
+        .args([&["/C".to_string()][..], &build_command_parts].concat())
+        .spawn()?
+        .wait_with_output()?;
+
+    if output.status.success() {
+        println!("{}", "Build succeeded, packing plugin...".bright_green().bold());
+        pack_plugin(source).await?;
+    } else {
+        println!("{}", "Rebuild failed".bright_red().bold());
+    }
+    Ok(())
+}
+
+async fn setup_watcher(source: Option<String>) -> Result<()> {
+    let config = toml::from_str::<Config>(&read_to_string(env::current_dir()?.join("plugin.conf.toml"))?)?;
     tokio::spawn(async move {
         let (tx, rx) = std::sync::mpsc::channel();
 
-        let mut watcher = notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, tx)
-            .expect("failed to start builtin server fs watcher");
+        let mut watcher = notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, tx)?;
 
         watcher
-            .watch(Path::new("."), notify::RecursiveMode::Recursive)
-            .expect("builtin server failed to watch dir");
+            .watch(Path::new("."), notify::RecursiveMode::Recursive)?;
 
         loop {
             if let Ok(Ok(event)) = rx.recv() {
+                debug_println!("Received event: {:?}", event); // Debug: See all events
                 if let Some(event) = event.first() {
                     if event.paths.iter().any(|path| {
-                        !path.to_str().unwrap().contains("dist") && !path.to_str().unwrap().contains("node_modules")
-                        && !path.to_str().unwrap().contains(".notex.plugin")
+                        let path_str = path.to_str().unwrap();
+                        !path_str.contains("dist") && !path_str.contains("node_modules") && !path_str.contains(".notex.plugin")
                     }) {
                         if !event.kind.is_access() {
-                            perform_rebuild(source.clone()).await?
+                            debug_println!("Triggering rebuild for event: {:?}", event); // Debug: Confirm rebuild trigger
+                            perform_rebuild(source.clone(), config.profile.build.clone()).await?
+                        } else {
+                            debug_println!("Event ignored (access): {:?}", event.kind); // Debug: Check ignored events
                         }
+                    } else {
+                        debug_println!("Event ignored (path filter): {:?}", event.paths); // Debug: Check filtered paths
                     }
-
                 }
             }
         }
+        #[allow(unreachable_code)]
         Ok::<(), anyhow::Error>(())
     });
     Ok(())
@@ -153,7 +164,7 @@ struct RenderedTemplate {
     index: String,
 }
 
-pub async fn create_template(main_dir: &PathBuf, dir: &Dir<'_>, t: &RenderedTemplate) -> Result<()> {
+async fn create_template(main_dir: &PathBuf, dir: &Dir<'_>, t: &RenderedTemplate) -> Result<()> {
     for entry in dir.entries() {
         if entry.as_dir().is_some() {
             create_dir(main_dir.join(entry.path()))?;
