@@ -134,20 +134,20 @@ async fn setup_watcher(source: Option<String>) -> Result<()> {
 
         loop {
             if let Ok(Ok(event)) = rx.recv() {
-                debug_println!("Received event: {:?}", event); // Debug: See all events
+                debug_println!("Received event: {:?}", event);
                 if let Some(event) = event.first() {
                     if event.paths.iter().any(|path| {
                         let path_str = path.to_str().unwrap();
                         !path_str.contains("dist") && !path_str.contains("node_modules") && !path_str.contains(".notex.plugin")
                     }) {
                         if !event.kind.is_access() {
-                            debug_println!("Triggering rebuild for event: {:?}", event); // Debug: Confirm rebuild trigger
+                            debug_println!("Triggering rebuild for event: {:?}", event);
                             perform_rebuild(source.clone(), config.profile.build.clone()).await?
                         } else {
-                            debug_println!("Event ignored (access): {:?}", event.kind); // Debug: Check ignored events
+                            debug_println!("Event ignored (access): {:?}", event.kind);
                         }
                     } else {
-                        debug_println!("Event ignored (path filter): {:?}", event.paths); // Debug: Check filtered paths
+                        debug_println!("Event ignored (path filter): {:?}", event.paths);
                     }
                 }
             }
