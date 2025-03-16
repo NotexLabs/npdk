@@ -25,8 +25,10 @@ jobs:
         run: |
             echo "Current directory contents:"
             ls -la
-#      - name: Build
-#        run: |
-#          cargo build --release --target ${{ matrix.target.target }}
-#          mkdir -p bin/${{ matrix.target.arch }}
-#          mv /target/${{ matrix.target.target }}/release/ bin/${{ matrix.target.arch }}/
+            echo "Checking src directory:"
+            ls -la src || echo "src directory not found!"
+      - name: Build
+        run: |
+          cargo build --release --target ${{ matrix.target.target }}
+          mkdir -p bin/${{ matrix.target.arch }}
+          mv /target/${{ matrix.target.target }}/release/ bin/${{ matrix.target.arch }}/
