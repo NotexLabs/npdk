@@ -21,10 +21,12 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.target.target }}
-      - name: Build
+      - name: Check directory structure
         run: |
-          ls -a
+            echo "Current directory contents:"
+            ls -la
+#      - name: Build
+#        run: |
 #          cargo build --release --target ${{ matrix.target.target }}
-#          cd ..
 #          mkdir -p bin/${{ matrix.target.arch }}
 #          mv /target/${{ matrix.target.target }}/release/ bin/${{ matrix.target.arch }}/
