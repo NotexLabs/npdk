@@ -23,6 +23,7 @@ jobs:
           target: ${{ matrix.target.target }}
       - name: Check directory structure
         run: |
+            cd ..
             echo "Current directory contents:"
             ls -la
             echo "Checking src directory:"
