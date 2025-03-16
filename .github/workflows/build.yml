@@ -23,6 +23,7 @@ jobs:
           target: ${{ matrix.target.target }}
       - name: Build
         run: |
+          ls
           cargo build --release --target ${{ matrix.target.target }}
           cd ..
           mkdir -p bin/${{ matrix.target.arch }}
