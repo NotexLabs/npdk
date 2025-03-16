@@ -53,7 +53,7 @@ jobs:
           mkdir -p artifacts
           EXT=""
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then EXT=".exe"; fi
-          mv target/${{ matrix.target }}/release/your_binary_name$EXT artifacts/your_binary_name-${{ matrix.target }}$EXT
+          mv target/${{ matrix.target }}/release/npdk$EXT artifacts/npdk-${{ matrix.target }}$EXT
         shell: bash
 
       - name: Upload binary
