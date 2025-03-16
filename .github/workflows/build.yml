@@ -1,0 +1,36 @@
+name: Build Binaries
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        target:
+          - { target: x86_64-unknown-linux-gnu, arch: linux-x64 }
+          - { target: x86_64-pc-windows-msvc, arch: win32-x64 }
+          - { target: x86_64-apple-darwin, arch: darwin-x64 }
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target.target }}
+      - name: Build
+        run: |
+          cd src-tauri
+          cargo build --release --target ${{ matrix.target.target }}
+          cd ..
+          mkdir -p bin/${{ matrix.target.arch }}
+          mv src-tauri/target/${{ matrix.target.target }}/release/mybinary* bin/${{ matrix.target.arch }}/
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.target.arch }}-binary
+          path: bin/${{ matrix.target.arch }}/
