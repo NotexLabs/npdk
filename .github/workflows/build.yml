@@ -16,7 +16,6 @@ jobs:
           - { target: x86_64-apple-darwin, arch: darwin-x64 }
 
     steps:
-      - uses: actions/checkout@v3
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -28,8 +27,3 @@ jobs:
           cd ..
           mkdir -p bin/${{ matrix.target.arch }}
           mv /target/${{ matrix.target.target }}/release/ bin/${{ matrix.target.arch }}/
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.target.arch }}-binary
-          path: bin/${{ matrix.target.arch }}/
