@@ -24,11 +24,10 @@ jobs:
           target: ${{ matrix.target.target }}
       - name: Build
         run: |
-          cd src-tauri
           cargo build --release --target ${{ matrix.target.target }}
           cd ..
           mkdir -p bin/${{ matrix.target.arch }}
-          mv src-tauri/target/${{ matrix.target.target }}/release/mybinary* bin/${{ matrix.target.arch }}/
+          mv /target/${{ matrix.target.target }}/release/ bin/${{ matrix.target.arch }}/
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
