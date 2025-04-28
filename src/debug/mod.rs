@@ -1,5 +1,5 @@
-
-#[macro_export] macro_rules! debug_print {
+#[macro_export]
+macro_rules! debug_print {
     ($($arg:tt)*) => {
         {
             #[cfg(debug_assertions)]
@@ -8,7 +8,8 @@
     };
 }
 
-#[macro_export] macro_rules! debug_println {
+#[macro_export]
+macro_rules! debug_println {
     ($($arg:tt)*) => {
         {
             #[cfg(debug_assertions)]
