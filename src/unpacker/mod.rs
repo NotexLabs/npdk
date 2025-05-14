@@ -42,7 +42,7 @@ impl UnPacker {
                 .unwrap_or_else(|_| {
                     let mut enc_buf = vec![0u8; content_size as usize];
                     let bytes = decompressed_plugin_content[..content_size as usize].to_vec();
-                    Base64::encode(&bytes, &mut enc_buf).to_string()
+                    Base64::encode(&bytes, &mut enc_buf).unwrap().to_string()
                 });
             decompressed_plugin_content = decompressed_plugin_content[content_size as usize..].to_vec();
             pack.insert(url, content);

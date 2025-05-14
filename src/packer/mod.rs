@@ -8,7 +8,6 @@ use anyhow::{anyhow, Result};
 use brotli::CompressorWriter;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-use tokio::io::{AsyncReadExt};
 use tokio::join;
 use walkdir::WalkDir;
 use crate::debug_println;
@@ -38,7 +37,7 @@ impl Packer {
             let path = entry.into_path();
             if path.to_str().unwrap().contains("@mf-types") { continue }
             if path.is_file() {
-                let mut content= fs::read(&path)?;
+                let content= fs::read(&path)?;
                 let file_name = path.file_name().unwrap().to_str().unwrap();
                 if file_name == "plugin.conf.toml" {
                     let content = String::from_utf8(content.clone())?;
