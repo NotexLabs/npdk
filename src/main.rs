@@ -74,7 +74,9 @@ impl Cli {
                 let config_json = tera.render("package.json", &context)?;
                 let index = tera.render("src/index.tsx", &context)?;
 
-                create_dir(&dir)?;
+                if !Path::new(&dir).exists() {
+                    create_dir(&dir)?;
+                }
 
                 create_template(&PathBuf::from(dir), &TEMPLATE, &RenderedTemplate {config_ts, config_toml, config_json, index}).await?;
             }

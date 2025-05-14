@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use tokio::fs::File;
 use anyhow::Result;
+use base64ct::{Base64, Encoding};
 use brotli::{DecompressorWriter};
 use tokio::io::AsyncReadExt;
 
@@ -37,7 +38,12 @@ impl UnPacker {
             decompressed_plugin_content = decompressed_plugin_content[8..].to_vec();
             let url = String::from_utf8(decompressed_plugin_content[..url_size as usize].to_vec())?;
             decompressed_plugin_content = decompressed_plugin_content[url_size as usize..].to_vec();
-            let content = String::from_utf8(decompressed_plugin_content[..content_size as usize].to_vec())?;
+            let content = String::from_utf8(decompressed_plugin_content[..content_size as usize].to_vec())
+                .unwrap_or_else(|_| {
+                    let mut enc_buf = vec![0u8; content_size as usize];
+                    let bytes = decompressed_plugin_content[..content_size as usize].to_vec();
+                    Base64::encode(&bytes, &mut enc_buf).to_string()
+                });
             decompressed_plugin_content = decompressed_plugin_content[content_size as usize..].to_vec();
             pack.insert(url, content);
         }

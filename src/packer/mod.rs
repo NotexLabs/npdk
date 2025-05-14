@@ -1,12 +1,13 @@
 pub mod config_parser;
 
+use std::fs;
+use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use anyhow::{anyhow, Result};
 use brotli::CompressorWriter;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-use tokio::fs::File;
 use tokio::io::{AsyncReadExt};
 use tokio::join;
 use walkdir::WalkDir;
@@ -37,10 +38,11 @@ impl Packer {
             let path = entry.into_path();
             if path.to_str().unwrap().contains("@mf-types") { continue }
             if path.is_file() {
-                let mut content = String::new();
-                File::open(&path).await?.read_to_string(&mut content).await?;
+                let mut content= fs::read(&path)?;
                 let file_name = path.file_name().unwrap().to_str().unwrap();
                 if file_name == "plugin.conf.toml" {
+                    let content = String::from_utf8(content.clone())?;
+                    debug_println!("{}", content);
                     config = Some(toml::from_str::<Config>(&content)?);
                 }
                 
@@ -49,7 +51,7 @@ impl Packer {
                     &(file_name.len() as u32).to_be_bytes()[..],
                     &(content.len() as u32).to_be_bytes()[..],
                     file_name.as_bytes(),
-                    content.as_bytes(),
+                    &content[..],
                 ].concat::<u8>();
             }
         }
@@ -61,8 +63,8 @@ impl Packer {
             let (tx, mut rx) = tokio::sync::oneshot::channel();
 
             let compress_task = tokio::task::spawn(async move {
-                let output_file = File::create(format!("{}.notex.plugin", config.package.name)).await?;
-                let mut output = BufWriter::new(output_file.into_std().await);
+                let output_file = File::create(format!("{}.notex.plugin", config.package.name))?;
+                let mut output = BufWriter::new(output_file);
                 let mut compressor = CompressorWriter::new(
                     &mut output,
                     4096,
