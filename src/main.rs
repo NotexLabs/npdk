@@ -1,20 +1,20 @@
+use anyhow::Result;
+use clap::{Parser, Subcommand};
+use colored::Colorize;
+use convert_case::{Case, Casing};
+use dialoguer::theme::ColorfulTheme;
+use include_dir::{Dir, include_dir};
+use npdk::debug_println;
+use npdk::packer::Packer;
+use npdk::packer::config_parser::Config;
 use std::env;
 use std::fs::{create_dir, read_to_string};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{Duration};
-use clap::{Parser, Subcommand};
-use anyhow::Result;
-use colored::Colorize;
-use convert_case::{Case, Casing};
-use dialoguer::theme::ColorfulTheme;
-use include_dir::{include_dir, Dir};
+use std::time::Duration;
 use tera::{Context as Ctx, Tera};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-use npdk::debug_println;
-use npdk::packer::config_parser::Config;
-use npdk::packer::Packer;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -49,19 +49,35 @@ impl Cli {
                 let mut tera = Tera::default();
                 tera.add_raw_template(
                     "rsbuild.config.ts",
-                    TEMPLATE.get_file("rsbuild.config.ts").unwrap().contents_utf8().unwrap()
+                    TEMPLATE
+                        .get_file("rsbuild.config.ts")
+                        .unwrap()
+                        .contents_utf8()
+                        .unwrap(),
                 )?;
                 tera.add_raw_template(
                     "plugin.conf.toml",
-                    TEMPLATE.get_file("plugin.conf.toml").unwrap().contents_utf8().unwrap()
+                    TEMPLATE
+                        .get_file("plugin.conf.toml")
+                        .unwrap()
+                        .contents_utf8()
+                        .unwrap(),
                 )?;
                 tera.add_raw_template(
                     "package.json",
-                    TEMPLATE.get_file("package.json").unwrap().contents_utf8().unwrap()
+                    TEMPLATE
+                        .get_file("package.json")
+                        .unwrap()
+                        .contents_utf8()
+                        .unwrap(),
                 )?;
                 tera.add_raw_template(
                     "src/index.tsx",
-                    TEMPLATE.get_file("src/index.tsx").unwrap().contents_utf8().unwrap()
+                    TEMPLATE
+                        .get_file("src/index.tsx")
+                        .unwrap()
+                        .contents_utf8()
+                        .unwrap(),
                 )?;
                 let mut context = Ctx::new();
 
@@ -78,7 +94,17 @@ impl Cli {
                     create_dir(&dir)?;
                 }
 
-                create_template(&PathBuf::from(dir), &TEMPLATE, &RenderedTemplate {config_ts, config_toml, config_json, index}).await?;
+                create_template(
+                    &PathBuf::from(dir),
+                    &TEMPLATE,
+                    &RenderedTemplate {
+                        config_ts,
+                        config_toml,
+                        config_json,
+                        index,
+                    },
+                )
+                .await?;
             }
             CliCommand::Watch { source } => {
                 setup_watcher(source).await?;
@@ -94,14 +120,17 @@ async fn pack_plugin(source: Option<String>) -> Result<()> {
     if let Some(source) = source {
         Packer::new(PathBuf::from(source))?.pack().await?;
     } else {
-        Packer::new(env::current_dir().unwrap().join("dist"))?.pack().await?;
+        Packer::new(env::current_dir().unwrap().join("dist"))?
+            .pack()
+            .await?;
     }
     Ok(())
 }
 
 async fn perform_rebuild(source: Option<String>, build_command: String) -> Result<()> {
     println!("{}", "Rebuilding...".bright_green().bold());
-    let build_command_parts: Vec<String> = build_command.split(' ').map(|x| x.to_string()).collect();
+    let build_command_parts: Vec<String> =
+        build_command.split(' ').map(|x| x.to_string()).collect();
 
     if build_command_parts.is_empty() {
         return Err(anyhow::anyhow!("Build command is empty"));
@@ -116,7 +145,10 @@ async fn perform_rebuild(source: Option<String>, build_command: String) -> Resul
         .wait_with_output()?;
 
     if output.status.success() {
-        println!("{}", "Build succeeded, packing plugin...".bright_green().bold());
+        println!(
+            "{}",
+            "Build succeeded, packing plugin...".bright_green().bold()
+        );
         pack_plugin(source).await?;
     } else {
         println!("{}", "Rebuild failed".bright_red().bold());
@@ -125,14 +157,15 @@ async fn perform_rebuild(source: Option<String>, build_command: String) -> Resul
 }
 
 async fn setup_watcher(source: Option<String>) -> Result<()> {
-    let config = toml::from_str::<Config>(&read_to_string(env::current_dir()?.join("plugin.conf.toml"))?)?;
+    let config = toml::from_str::<Config>(&read_to_string(
+        env::current_dir()?.join("plugin.conf.toml"),
+    )?)?;
     tokio::spawn(async move {
         let (tx, rx) = std::sync::mpsc::channel();
 
         let mut watcher = notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, tx)?;
 
-        watcher
-            .watch(Path::new("."), notify::RecursiveMode::Recursive)?;
+        watcher.watch(Path::new("."), notify::RecursiveMode::Recursive)?;
 
         loop {
             if let Ok(Ok(event)) = rx.recv() {
@@ -140,7 +173,9 @@ async fn setup_watcher(source: Option<String>) -> Result<()> {
                 if let Some(event) = event.first() {
                     if event.paths.iter().any(|path| {
                         let path_str = path.to_str().unwrap();
-                        !path_str.contains("dist") && !path_str.contains("node_modules") && !path_str.contains(".notex.plugin")
+                        !path_str.contains("dist")
+                            && !path_str.contains("node_modules")
+                            && !path_str.contains(".notex.plugin")
                     }) {
                         if !event.kind.is_access() {
                             debug_println!("Triggering rebuild for event: {:?}", event);
@@ -174,11 +209,36 @@ async fn create_template(main_dir: &PathBuf, dir: &Dir<'_>, t: &RenderedTemplate
         }
         if entry.as_file().is_some() {
             match entry.path().file_name().unwrap().to_str().unwrap() {
-                "rsbuild.config.ts" => File::create(main_dir.join(entry.path())).await?.write_all(t.config_ts.as_bytes()).await?,
-                "plugin.conf.toml" => File::create(main_dir.join(entry.path())).await?.write_all(t.config_toml.as_bytes()).await?,
-                "package.json" => File::create(main_dir.join(entry.path())).await?.write_all(t.config_json.as_bytes()).await?,
-                "index.tsx" => File::create(main_dir.join(entry.path())).await?.write_all(t.index.as_bytes()).await?,
-                _ => File::create(main_dir.join(entry.path())).await?.write_all(entry.as_file().unwrap().contents()).await?,
+                "rsbuild.config.ts" => {
+                    File::create(main_dir.join(entry.path()))
+                        .await?
+                        .write_all(t.config_ts.as_bytes())
+                        .await?
+                }
+                "plugin.conf.toml" => {
+                    File::create(main_dir.join(entry.path()))
+                        .await?
+                        .write_all(t.config_toml.as_bytes())
+                        .await?
+                }
+                "package.json" => {
+                    File::create(main_dir.join(entry.path()))
+                        .await?
+                        .write_all(t.config_json.as_bytes())
+                        .await?
+                }
+                "index.tsx" => {
+                    File::create(main_dir.join(entry.path()))
+                        .await?
+                        .write_all(t.index.as_bytes())
+                        .await?
+                }
+                _ => {
+                    File::create(main_dir.join(entry.path()))
+                        .await?
+                        .write_all(entry.as_file().unwrap().contents())
+                        .await?
+                }
             }
         }
     }
@@ -195,7 +255,7 @@ enum CliCommand {
     Watch {
         #[clap(short, long)]
         source: Option<String>,
-    }
+    },
 }
 
 #[tokio::main]
