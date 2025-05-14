@@ -40,8 +40,8 @@ impl UnPacker {
             decompressed_plugin_content = decompressed_plugin_content[url_size as usize..].to_vec();
             let content = String::from_utf8(decompressed_plugin_content[..content_size as usize].to_vec())
                 .unwrap_or_else(|_| {
-                    let mut enc_buf = vec![0u8; content_size as usize];
-                    let bytes = decompressed_plugin_content[..content_size as usize*2].to_vec();
+                    let mut enc_buf = vec![0u8; content_size as usize * 2];
+                    let bytes = decompressed_plugin_content[..content_size as usize].to_vec();
                     Base64::encode(&bytes, &mut enc_buf).unwrap().to_string()
                 });
             decompressed_plugin_content = decompressed_plugin_content[content_size as usize..].to_vec();
